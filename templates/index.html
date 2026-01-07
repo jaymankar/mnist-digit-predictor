@@ -44,53 +44,84 @@
     <button onclick="clearCanvas()">Clear</button>
 
     <p id="result"></p>
-
-    <script>
-        const canvas = document.getElementById("canvas");
+<script>
+const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// Initialize canvas: black background
+/* ===== Init canvas ===== */
 ctx.fillStyle = 'white';
 ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.strokeStyle = 'black';
 ctx.lineCap = 'round';
 ctx.lineJoin = 'round';
-ctx.strokeStyle = 'black';
 
 let drawing = false;
-let lastX, lastY;
-let brushSize = 15; // adjustable brush size
+let lastX = 0;
+let lastY = 0;
+let brushSize = 15;
 
-canvas.onmousedown = (e) => {
+/* ===== Helper: get position ===== */
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+        return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+        };
+    }
+    return { x: e.offsetX, y: e.offsetY };
+}
+
+/* ===== Start drawing ===== */
+function startDraw(e) {
+    e.preventDefault();
     drawing = true;
-    lastX = e.offsetX;
-    lastY = e.offsetY;
-};
+    const pos = getPos(e);
+    lastX = pos.x;
+    lastY = pos.y;
+}
 
-canvas.onmouseup = () => drawing = false;
-canvas.onmouseout = () => drawing = false;  // stop drawing if cursor leaves canvas
-
-canvas.onmousemove = draw;
-
+/* ===== Draw ===== */
 function draw(e) {
     if (!drawing) return;
+    e.preventDefault();
 
+    const pos = getPos(e);
     ctx.lineWidth = brushSize;
 
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
-    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
 
-    lastX = e.offsetX;
-    lastY = e.offsetY;
+    lastX = pos.x;
+    lastY = pos.y;
 }
 
+/* ===== Stop drawing ===== */
+function stopDraw() {
+    drawing = false;
+}
+
+/* ===== Mouse events ===== */
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mousemove", draw);
+canvas.addEventListener("mouseup", stopDraw);
+canvas.addEventListener("mouseout", stopDraw);
+
+/* ===== Touch events ===== */
+canvas.addEventListener("touchstart", startDraw, { passive: false });
+canvas.addEventListener("touchmove", draw, { passive: false });
+canvas.addEventListener("touchend", stopDraw);
+
+/* ===== Clear ===== */
 function clearCanvas() {
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     document.getElementById("result").innerText = "";
 }
 
+/* ===== Predict ===== */
 function predict() {
     const dataURL = canvas.toDataURL("image/png");
 
@@ -99,15 +130,15 @@ function predict() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: dataURL })
     })
-        .then(res => res.json())
-        .then(data => {
-            const probs = data.probabilities.map(p => p.toFixed(2)).join(", ");
-            document.getElementById("result").innerText =
-                `Prediction: ${data.prediction}\nProbabilities: [${probs}]`;
-        });
+    .then(res => res.json())
+    .then(data => {
+        const probs = data.probabilities.map(p => p.toFixed(2)).join(", ");
+        document.getElementById("result").innerText =
+            `Prediction: ${data.prediction}\nProbabilities: [${probs}]`;
+    });
 }
+</script>
 
-    </script>
 
 </body>
 
