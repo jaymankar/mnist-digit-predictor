@@ -1,145 +1,487 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>MNIST Digit Predictor</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 30px;
-            background-color: #222;
-            color: #fff;
-        }
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Digit Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #7c6af7;
+      --accent2: #e06bf5;
+      --text: #e8e8f0;
+      --muted: #5a5a7a;
+      --canvas-bg: #ffffff;
+    }
 
-        canvas {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-            touch-action: none;
-        }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        button {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-            touch-action: none;
-        }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
 
-        #result {
-            margin-top: 20px;
-            font-size: 18px;
-        }
-    </style>
+    /* subtle grid bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* header */
+    .header {
+      text-align: center;
+    }
+
+    .header .tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .header h1 {
+      font-family: 'Space Mono', monospace;
+      font-size: 26px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    /* card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    /* canvas area */
+    .canvas-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+
+    canvas {
+      border-radius: 12px;
+      cursor: crosshair;
+      touch-action: none;
+      display: block;
+      width: 100%;
+      max-width: 280px;
+      aspect-ratio: 1;
+      border: 1px solid var(--border);
+    }
+
+    .canvas-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    /* buttons */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+    }
+
+    .btn-predict {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+
+    .btn-predict:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-clear:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    /* result */
+    .result-card {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .result-card.visible {
+      display: flex;
+    }
+
+    .prediction-display {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .big-digit {
+      font-family: 'Space Mono', monospace;
+      font-size: 72px;
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .prediction-meta {
+      flex: 1;
+    }
+
+    .prediction-meta .label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .confidence-text {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .confidence-text span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* prob bars */
+    .prob-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .bars {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 16px 1fr 44px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bar-digit {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .bar-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0%;
+    }
+
+    .bar-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .bar-row.top .bar-digit { color: var(--accent); }
+    .bar-row.top .bar-val   { color: var(--accent); }
+
+    /* loading */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+
+    .loading.visible { display: block; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1; }
+    }
+
+    .loading span {
+      animation: pulse 1.2s ease infinite;
+    }
+    .loading span:nth-child(2) { animation-delay: 0.2s; }
+    .loading span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* footer */
+    .footer {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
 </head>
-
 <body>
+<div class="wrapper">
 
-    <h2>Draw a digit (0-9)</h2>
+  <!-- header -->
+  <div class="header">
+    <div class="tag">CNN · MNIST · From Scratch</div>
+    <h1>Digit Predictor</h1>
+    <p>draw any digit · model predicts in real time</p>
+  </div>
 
-    <canvas id="canvas" width="280" height="280"></canvas>
+  <!-- canvas card -->
+  <div class="card">
+    <div class="canvas-label">draw here</div>
+    <div class="canvas-wrap">
+      <canvas id="canvas" width="280" height="280"></canvas>
+    </div>
+    <div class="btn-row">
+      <button class="btn-predict" onclick="predict()">Predict →</button>
+      <button class="btn-clear"   onclick="clearCanvas()">Clear</button>
+    </div>
+  </div>
 
-    <br>
-    <button onclick="predict()">Predict</button>
-    <button onclick="clearCanvas()">Clear</button>
+  <!-- loading -->
+  <div class="loading" id="loading">
+    <span>·</span><span>·</span><span>·</span> running inference
+  </div>
 
-    <p id="result"></p>
+  <!-- result card -->
+  <div class="card result-card" id="result-card">
+
+    <div class="prediction-display">
+      <div class="big-digit" id="big-digit">—</div>
+      <div class="prediction-meta">
+        <div class="label">confidence</div>
+        <div class="confidence-text" id="conf-text">—<span></span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="prob-title">all probabilities</div>
+      <div class="bars" id="bars"></div>
+    </div>
+
+  </div>
+
+  <!-- footer -->
+  <div class="footer">
+    built by <a href="https://github.com/jaymankar" target="_blank">jaymankar</a>
+    · cnn trained from scratch · 97% test acc
+  </div>
+
+</div>
+
 <script>
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx    = canvas.getContext("2d");
 
-/* ===== Init canvas ===== */
-ctx.fillStyle = 'white';
+ctx.fillStyle = "white";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
-ctx.strokeStyle = 'black';
-ctx.lineCap = 'round';
-ctx.lineJoin = 'round';
+ctx.strokeStyle = "black";
+ctx.lineCap     = "round";
+ctx.lineJoin    = "round";
+ctx.lineWidth   = 15;
 
-let drawing = false;
-let lastX = 0;
-let lastY = 0;
-let brushSize = 15;
+let drawing = false, lastX = 0, lastY = 0;
 
-/* ===== Helper: get position ===== */
 function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    if (e.touches) {
-        return {
-            x: e.touches[0].clientX - rect.left,
-            y: e.touches[0].clientY - rect.top
-        };
-    }
-    return { x: e.offsetX, y: e.offsetY };
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / r.width;
+  const scaleY = canvas.height / r.height;
+  if (e.touches) return {
+    x: (e.touches[0].clientX - r.left) * scaleX,
+    y: (e.touches[0].clientY - r.top)  * scaleY
+  };
+  return {
+    x: e.offsetX * scaleX,
+    y: e.offsetY * scaleY
+  };
 }
 
-/* ===== Start drawing ===== */
 function startDraw(e) {
-    e.preventDefault();
-    drawing = true;
-    const pos = getPos(e);
-    lastX = pos.x;
-    lastY = pos.y;
+  e.preventDefault();
+  drawing = true;
+  const p = getPos(e);
+  lastX = p.x; lastY = p.y;
 }
 
-/* ===== Draw ===== */
 function draw(e) {
-    if (!drawing) return;
-    e.preventDefault();
-
-    const pos = getPos(e);
-    ctx.lineWidth = brushSize;
-
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-
-    lastX = pos.x;
-    lastY = pos.y;
+  if (!drawing) return;
+  e.preventDefault();
+  const p = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  lastX = p.x; lastY = p.y;
 }
 
-/* ===== Stop drawing ===== */
-function stopDraw() {
-    drawing = false;
-}
+function stopDraw() { drawing = false; }
 
-/* ===== Mouse events ===== */
-canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mousemove", draw);
-canvas.addEventListener("mouseup", stopDraw);
-canvas.addEventListener("mouseout", stopDraw);
-
-/* ===== Touch events ===== */
+canvas.addEventListener("mousedown",  startDraw);
+canvas.addEventListener("mousemove",  draw);
+canvas.addEventListener("mouseup",    stopDraw);
+canvas.addEventListener("mouseout",   stopDraw);
 canvas.addEventListener("touchstart", startDraw, { passive: false });
-canvas.addEventListener("touchmove", draw, { passive: false });
-canvas.addEventListener("touchend", stopDraw);
+canvas.addEventListener("touchmove",  draw,      { passive: false });
+canvas.addEventListener("touchend",   stopDraw);
 
-/* ===== Clear ===== */
 function clearCanvas() {
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    document.getElementById("result").innerText = "";
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  document.getElementById("result-card").classList.remove("visible");
+  document.getElementById("loading").classList.remove("visible");
 }
 
-/* ===== Predict ===== */
 function predict() {
-    const dataURL = canvas.toDataURL("image/png");
+  const dataURL = canvas.toDataURL("image/png");
 
-    fetch("/predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataURL })
-    })
-    .then(res => res.json())
-    .then(data => {
-        const probs = data.probabilities.map(p => p.toFixed(2)).join(", ");
-        document.getElementById("result").innerText =
-            `Prediction: ${data.prediction}\nProbabilities: [${probs}]`;
+  document.getElementById("result-card").classList.remove("visible");
+  document.getElementById("loading").classList.add("visible");
+
+  fetch("/predict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: dataURL })
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById("loading").classList.remove("visible");
+
+    const pred  = data.prediction;
+    const probs = data.probabilities;
+    const conf  = (probs[pred] * 100).toFixed(1);
+
+    document.getElementById("big-digit").textContent = pred;
+    document.getElementById("conf-text").innerHTML   =
+      `${conf}<span>%</span>`;
+
+    // build bars
+    const barsEl = document.getElementById("bars");
+    barsEl.innerHTML = "";
+
+    probs.forEach((p, i) => {
+      const pct = (p * 100).toFixed(1);
+      const row = document.createElement("div");
+      row.className = "bar-row" + (i === pred ? " top" : "");
+      row.innerHTML = `
+        <div class="bar-digit">${i}</div>
+        <div class="bar-track">
+          <div class="bar-fill" data-pct="${pct}"></div>
+        </div>
+        <div class="bar-val">${pct}%</div>
+      `;
+      barsEl.appendChild(row);
     });
+
+    document.getElementById("result-card").classList.add("visible");
+
+    // animate bars after paint
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".bar-fill").forEach(el => {
+        el.style.width = el.dataset.pct + "%";
+      });
+    });
+  })
+  .catch(() => {
+    document.getElementById("loading").classList.remove("visible");
+    alert("prediction failed — is the server running?");
+  });
 }
 </script>
-
-
 </body>
-
 </html>
